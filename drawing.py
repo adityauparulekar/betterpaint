@@ -212,6 +212,7 @@ class App:
         self.cursor_y = 100
         self.cursor = None
         self.drawEnable = False
+        self.points = [None] * 5
         # self.drawArea.grid(row=1, columnspan=5)
         # self.drawArea.pack(side="right")
         self.setup()
@@ -232,8 +233,8 @@ class App:
     def setup(self):
         self.drawArea.bind('<B1-Motion>', self.paint)
         self.drawArea.bind('<ButtonRelease-1>', self.reset)
-        self.window.bind('<KeyPress-space>', self.push)
-        self.window.bind('<KeyRelease-space>', self.release)
+        self.window.bind('<KeyPress-a>', self.push)
+        self.window.bind('<KeyRelease-a>', self.release)
         # self.drawArea.bind('<B1-Motion>', self.push)
         # self.drawArea.bind('<ButtonRelease-1>', self.release)
     def paint(self, event):
@@ -254,24 +255,36 @@ class App:
         self.cursor_x = event.x
         self.cursor_y = event.y
 
+    def rotate(self, point):
+        self.points = self.points[1:] + [point]
     # method for drawing a point
     def draw(self, x, y):
+        self.rotate([x, y])
+        numValid = 0
+        netPoint = [0, 0]
+        for i in range(len(self.points)):
+            if self.points[i]:
+                netPoint[0] += self.points[i][0]
+                netPoint[1] += self.points[i][1]
+                numValid+=1
+        netPoint = [netPoint[0] / numValid, netPoint[1] * 2 / numValid]
+        print(netPoint)
         self.line_width = self.sizeSlider.get()
         if self.cursor:
             self.drawArea.delete(self.cursor)
         
         radius = 15
-        self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
 
         if self.old_x and self.old_y:
             if self.drawEnable:
-                self.drawArea.create_line(self.old_x, self.old_y, x, y,
+                self.drawArea.create_line(self.old_x, self.old_y, netPoint[0], netPoint[1],
                                 width=self.line_width, fill=self.color,
                                 capstyle=ROUND, smooth=TRUE, splinesteps=36)
-        self.old_x = x
-        self.old_y = y
-        self.cursor_x = x
-        self.cursor_y = y
+        self.old_x = netPoint[0]
+        self.old_y = netPoint[1]
+        self.cursor_x = netPoint[0]
+        self.cursor_y = netPoint[1]
+        self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
 
     def push(self, event):
         self.drawEnable = True

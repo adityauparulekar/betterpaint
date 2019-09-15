@@ -31,7 +31,6 @@ class VideoComponent(QWidget):
         super().__init__()
 
         self.label = QLabel(self)
-        print(f'{sz.width()} {sz.height()}')
         self.label.resize(sz.width(), sz.height())
 
         th = Thread(self, sz)
@@ -59,9 +58,7 @@ class Canvas(QWidget):
     def addNoise(self, point):
         noiseParam = 6
         noisePoint = QPoint(noiseParam * (random.random() - 0.5), noiseParam * (random.random() - 0.5))
-        print(point)
         point += noisePoint
-        print(point)
         return point
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -70,6 +67,7 @@ class Canvas(QWidget):
             self.lastAverage = self.lastPoint
             self.points = [None] * N
             self.rotatePoints(self.lastPoint)
+
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.LeftButton) & self.drawing:
             point = self.addNoise(event.pos())

@@ -103,48 +103,6 @@ def centroid(max_contour):
     else:
         return None
 
-
-# def farthest_point(defects, contour, centroid):
-    # if defects is not None:
-    #     s = defects[:, 0][:, 0]
-    #     pointX, pointY = traverse_point[len(traverse_point)-1]
-    #     x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
-    #     y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
-
-    #     xp = cv2.pow(cv2.subtract(x, pointX), 2)
-    #     yp = cv2.pow(cv2.subtract(y, pointY), 2)
-    #     dist = cv2.sqrt(cv2.add(xp, yp))
-
-    #     dist_min = np.argmin(dist)
-
-    #     if dist_min < len(s):
-    #         closest = s[dist_min]
-    #         closePoint = tuple(contour[closest][0])
-    #         return closePoint
-    #     else:
-    #         return None
-
-    # if defects is not None and centroid is not None:
-    #     s = defects[:, 0][:, 0]
-    #     cx, cy = centroid
-
-    #     x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
-    #     y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
-
-    #     xp = cv2.pow(cv2.subtract(x, cx), 2)
-    #     yp = cv2.pow(cv2.subtract(y, cy), 2)
-    #     dist = cv2.sqrt(cv2.add(xp, yp))
-
-    #     dist_max_i = np.argmax(dist)
-
-    #     if dist_max_i < len(s):
-    #         farthest_defect = s[dist_max_i]
-    #         farthest_point = tuple(contour[farthest_defect][0])
-    #         return farthest_point
-    #     else:
-    #         return None
-
-
 def closestTo(centroidList, lastPoint):
     min_index = 0
     minVal = 1000000000
@@ -189,7 +147,7 @@ def manage_image_opr(frame, hand_hist):
         hull = cv2.convexHull(max_cont, returnPoints=False)
         defects = cv2.convexityDefects(max_cont, hull)
         far_point = (0,0)
-        #if len(traverse_point) >= 2:
+        #if len(traverse_point) >= 2:               //this is in case closest to method didn't work 
         #    far_point = minCost(contour_list[i], traverse_point[len(traverse_point - 2)], traverse_point[len(traverse_point - 1)])
         if len(traverse_point) >= 1:
             far_point = closestTo(centroids, traverse_point[len(traverse_point) - 1])

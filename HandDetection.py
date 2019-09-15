@@ -6,11 +6,13 @@ gestPath = "haarcascades/handGest.xml"
 cPalmPath = "haarcascades/closedFrontalPalm.xml"
 palmPath = "haarcascades/palm.xml"
 fistPath = "haarcascades/fist.xml"
+handPath = "haarcascades/handCascade2.xml"
 faceCascade = cv2.CascadeClassifier(cv2.data.haarcascades + facePath)
 gestCascade = cv2.CascadeClassifier(gestPath)
 cPalmCascade = cv2.CascadeClassifier(cPalmPath)
 palmCascade = cv2.CascadeClassifier(palmPath)
 fistCascade = cv2.CascadeClassifier(fistPath)
+handCascade = cv2.CascadeClassifier(handPath)
 
 # print(cv2.data.haarcascades)
 # print("Detection time.")
@@ -63,6 +65,14 @@ for i in range(100000):
         minSize=(30, 30)
     )
 
+    # Get the hands
+    hands = handCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=3,
+        minSize=(30, 30)
+    )
+
     # Print how many of each type of feature there are in each frame
     # print("Frame " + str(i) + ": There are " + str(len(faces)) + " faces.")
     # print("Frame " + str(i) + ": There are " + str(len(gests)) + " gestures.")
@@ -91,6 +101,11 @@ for i in range(100000):
     # Draw a rectangle around the fists
     for (x, y, w, h) in fists:
         cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 255), 2)
+       # print (" at (" + str(x) + ", " + str(y) + ")")
+
+    # Draw a rectangle around the hands
+    for (x, y, w, h) in hands:
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 0), 2)
        # print (" at (" + str(x) + ", " + str(y) + ")")
 
     # Display the resulting frame

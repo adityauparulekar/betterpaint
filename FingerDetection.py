@@ -90,6 +90,8 @@ def hist_masking(frame, hist):
 
     thresh = cv2.merge((thresh, thresh, thresh))
 
+    cv2.imshow("image", cv2.bitwise_and(frame, thresh))
+
     return cv2.bitwise_and(frame, thresh)
 
 
@@ -142,7 +144,7 @@ def manage_image_opr(frame, hand_hist):
     if max_cont is not None:
         hull = cv2.convexHull(max_cont, returnPoints=False)
         defects = cv2.convexityDefects(max_cont, hull)
-        far_point = farthest_point(defects, max_cont, cnt_centroid)
+        far_point = cnt_centroid
         print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point))
         cv2.circle(frame, far_point, 5, [0, 0, 255], -1)
         if len(traverse_point) < 20:
@@ -173,7 +175,7 @@ def main():
         else:
             frame = draw_rect(frame)
 
-        cv2.imshow("Live Feed", rescale_frame(frame))
+        cv2.imshow("Live Feed", cv2.flip(rescale_frame(frame), 1))
 
         if pressed_key == 27:
             break

@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QDialog, QPushButton, QLabel
+from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QDialog, QPushButton, QLabel, QMainWindow
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QImage, QPixmap
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt, QPoint, QThread
 import cv2
@@ -7,27 +7,33 @@ import cv2
 class Thread(QThread):
     changePixmap = pyqtSignal(QImage)
 
+    def __init__(self, parent=None, szImage=None):
+        super().__init__(parent=parent)
+        self.sz = szImage
+
+
     def run(self):
         cap = cv2.VideoCapture(0)
         while True:
             ret, frame = cap.read()
             if ret: 
+                frame = cv2.flip(frame, 1)
                 rgbImage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h, w, ch = rgbImage.shape
                 bytesPerLine = ch * w
                 convertToQtFormat = QImage(rgbImage.data, w, h, bytesPerLine, QImage.Format_RGB888)
-                p = convertToQtFormat.scaled(640, 480, Qt.KeepAspectRatio)
+                p = convertToQtFormat.scaled(self.sz.width() + 100, self.sz.height(), Qt.KeepAspectRatio)
                 self.changePixmap.emit(p)
 
 class VideoComponent(QWidget):
-    def __init__(self):
+    def __init__(self, sz):
         super().__init__()
 
         self.label = QLabel(self)
-        self.label.move(280, 120)
-        self.label.resize(640, 480)
+        print(f'{sz.width()} {sz.height()}')
+        self.label.resize(sz.width(), sz.height())
 
-        th = Thread(self)
+        th = Thread(self, sz)
         th.changePixmap.connect(self.setImage)
         th.start()
     
@@ -55,7 +61,6 @@ class Canvas(QWidget):
     
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.LeftButton) & self.drawing:
-            print(event.pos())
             painter = QPainter(self.image)
             painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             painter.drawLine(self.lastPoint, event.pos())
@@ -71,18 +76,12 @@ class Canvas(QWidget):
         canvasPainter.drawImage(self.rect(), self.image, self.image.rect())
 
                 
-class App(QWidget):
-    def __init__(self):
+class Content(QWidget):
+    def __init__(self, sz):
         super().__init__()
-        self.initUI()
+        self.initUI(sz)
 
-    def initUI(self):
-        left = 30
-        top = 30
-        width = 1600
-        height = 900
-
-        self.setGeometry(left, top, width, height)
+    def initUI(self, sz):
         layout = QGridLayout()
 
         def vidButton():
@@ -92,7 +91,7 @@ class App(QWidget):
             print('S e t t i n g')
 
         # Temp set 0,0 Slot as Button instead of Video
-        vc = VideoComponent()
+        vc = VideoComponent(sz / 2)
         vButton = QPushButton('video here')
         vButton.clicked.connect(vidButton)
         layout.addWidget(vc, 0, 0)
@@ -104,13 +103,24 @@ class App(QWidget):
 
         self.canvas = Canvas()
         layout.addWidget(self.canvas, 0, 1, -1, 1)
+        self.setLayout(layout)
+
+class App(QMainWindow):
+    def __init__(self, sz):
+        super().__init__()
+        con = Content(sz)
+        self.setCentralWidget(con)
 
         self.setWindowTitle('FingerPaint')
-        self.setLayout(layout)
-        self.show()
+        self.setFixedSize(sz)
+        self.showMaximized()
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     app.setStyle('Fusion')
-    ex = App()
+    screen = app.primaryScreen()
+    ex = App(screen.size())
+
     sys.exit(app.exec_())

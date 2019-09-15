@@ -85,10 +85,6 @@ def hand_histogram(frame, roiAlt, use):
             roi[i * 10: i * 10 + 10, 0: 10] = hsv_frame[hand_rect_one_x[i]:hand_rect_one_x[i] + 10, hand_rect_one_y[i]:hand_rect_one_y[i] + 10]
 
         hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
-
-        file = open("thresh/canary.his", 'w')
-        print(type(roi))
-        file.close()
         
     return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
@@ -105,7 +101,7 @@ def hist_masking(frame, hist):
 
         thresh = cv2.merge((thresh, thresh, thresh))
 
-        cv2.imshow("image", cv2.bitwise_and(frame, thresh))
+        # cv2.imshow("image", cv2.bitwise_and(frame, thresh))
         return cv2.bitwise_and(frame, thresh)
 
 
@@ -178,44 +174,6 @@ def manage_image_opr(frame, hand_hist):
             traverse_point.append(far_point)
 
         draw_circles(frame, traverse_point)
-
-
-def main():
-    global hand_hist
-    is_hand_hist_created = False
-    capture = cv2.VideoCapture(0)
-
-    while capture.isOpened():
-        pressed_key = cv2.waitKey(1)
-        _, frame = capture.read()
-
-        if pressed_key & 0xFF == ord('z'):
-            is_hand_hist_created = True
-
-            try:
-                file = open("lol/thresh/canary.his", 'r')
-                
-                hist = json.loads(file.read())
-
-                hand_hist = hand_histogram(frame, hist, True)
-
-                file.close()
-            except FileNotFoundError:
-                hand_hist = hand_histogram(frame, "lmao", False)
-
-        if is_hand_hist_created:
-            manage_image_opr(frame, hand_hist)
-
-        else:
-            frame = draw_rect(frame)
-
-        cv2.imshow("Live Feed", cv2.flip(rescale_frame(frame), 1))
-
-        if pressed_key == 27:
-            break
-
-    cv2.destroyAllWindows()
-    capture.release()
 
 
 class App:

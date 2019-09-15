@@ -1,4 +1,4 @@
-import cv2
+import cv2, math
 import numpy as np
 
 hand_hist = None
@@ -11,7 +11,7 @@ hand_rect_two_x = None
 hand_rect_two_y = None
 
 
-def rescale_frame(frame, wpercent=130, hpercent=130):
+def rescale_frame(frame, wpercent=80, hpercent=80):
     width = int(frame.shape[1] * wpercent / 100)
     height = int(frame.shape[0] * hpercent / 100)
     return cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
@@ -91,7 +91,6 @@ def hist_masking(frame, hist):
     thresh = cv2.merge((thresh, thresh, thresh))
 
     cv2.imshow("image", cv2.bitwise_and(frame, thresh))
-
     return cv2.bitwise_and(frame, thresh)
 
 
@@ -105,27 +104,67 @@ def centroid(max_contour):
         return None
 
 
-def farthest_point(defects, contour, centroid):
-    if defects is not None and centroid is not None:
-        s = defects[:, 0][:, 0]
-        cx, cy = centroid
+# def farthest_point(defects, contour, centroid):
+    # if defects is not None:
+    #     s = defects[:, 0][:, 0]
+    #     pointX, pointY = traverse_point[len(traverse_point)-1]
+    #     x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
+    #     y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
 
-        x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
-        y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
+    #     xp = cv2.pow(cv2.subtract(x, pointX), 2)
+    #     yp = cv2.pow(cv2.subtract(y, pointY), 2)
+    #     dist = cv2.sqrt(cv2.add(xp, yp))
 
-        xp = cv2.pow(cv2.subtract(x, cx), 2)
-        yp = cv2.pow(cv2.subtract(y, cy), 2)
-        dist = cv2.sqrt(cv2.add(xp, yp))
+    #     dist_min = np.argmin(dist)
 
-        dist_max_i = np.argmax(dist)
+    #     if dist_min < len(s):
+    #         closest = s[dist_min]
+    #         closePoint = tuple(contour[closest][0])
+    #         return closePoint
+    #     else:
+    #         return None
 
-        if dist_max_i < len(s):
-            farthest_defect = s[dist_max_i]
-            farthest_point = tuple(contour[farthest_defect][0])
-            return farthest_point
-        else:
-            return None
+    # if defects is not None and centroid is not None:
+    #     s = defects[:, 0][:, 0]
+    #     cx, cy = centroid
 
+    #     x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
+    #     y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
+
+    #     xp = cv2.pow(cv2.subtract(x, cx), 2)
+    #     yp = cv2.pow(cv2.subtract(y, cy), 2)
+    #     dist = cv2.sqrt(cv2.add(xp, yp))
+
+    #     dist_max_i = np.argmax(dist)
+
+    #     if dist_max_i < len(s):
+    #         farthest_defect = s[dist_max_i]
+    #         farthest_point = tuple(contour[farthest_defect][0])
+    #         return farthest_point
+    #     else:
+    #         return None
+
+
+def closestTo(centroidList, lastPoint):
+    min_index = 0
+    minVal = 1000000000
+    lastx = 0
+    lasty = 0
+    if lastPoint is not None:
+        lastx = lastPoint[0]
+        lasty = lastPoint[1]
+    for i in range(len(centroidList)):
+        if centroidList[i] is not None:
+            x = centroidList[i][0]
+            y = centroidList[i][1]
+            xp = pow(x-lastx, 2)
+            yp = pow(y-lasty, 2)
+            sum = xp + yp
+            dist = math.sqrt(sum)
+            if dist < minVal:
+                min_index = i
+                minVal = dist
+    return centroidList[min_index]
 
 def draw_circles(frame, traverse_point):
     if traverse_point is not None:
@@ -136,17 +175,29 @@ def draw_circles(frame, traverse_point):
 def manage_image_opr(frame, hand_hist):
     hist_mask_image = hist_masking(frame, hand_hist)
     contour_list = contours(hist_mask_image)
-    max_cont = max_contour(contour_list)
 
-    cnt_centroid = centroid(max_cont)
-    cv2.circle(frame, cnt_centroid, 5, [255, 0, 255], -1)
+    max_cont = max_contour(contour_list)
+    cnt_max = centroid(max_cont)
+
+    centroids = []
+    for i in range(0,len(contour_list)):
+        centroids.append(centroid(contour_list[i]))
+    
+    cv2.circle(frame, cnt_max, 5, [255, 0, 255], -1)
 
     if max_cont is not None:
         hull = cv2.convexHull(max_cont, returnPoints=False)
         defects = cv2.convexityDefects(max_cont, hull)
-        far_point = cnt_centroid
-        print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point))
+        far_point = (0,0)
+        #if len(traverse_point) >= 2:
+        #    far_point = minCost(contour_list[i], traverse_point[len(traverse_point - 2)], traverse_point[len(traverse_point - 1)])
+        if len(traverse_point) >= 1:
+            far_point = closestTo(centroids, traverse_point[len(traverse_point) - 1])
+        else:
+            far_point = cnt_max
+            
         cv2.circle(frame, far_point, 5, [0, 0, 255], -1)
+
         if len(traverse_point) < 20:
             traverse_point.append(far_point)
         else:

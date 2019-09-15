@@ -122,6 +122,8 @@ def closestTo(centroidList, lastPoint):
     if lastPoint is not None:
         lastx = lastPoint[0]
         lasty = lastPoint[1]
+    if len(centroidList) == 0:
+        return (-1, -1)
     for i in range(len(centroidList)):
         if centroidList[i] is not None:
             x = centroidList[i][0]
@@ -133,6 +135,7 @@ def closestTo(centroidList, lastPoint):
             if dist < minVal:
                 min_index = i
                 minVal = dist
+
     return centroidList[min_index]
 
 def draw_circles(frame, traverse_point):
@@ -161,12 +164,16 @@ def manage_image_opr(frame, hand_hist):
         #    far_point = minCost(contour_list[i], traverse_point[len(traverse_point - 2)], traverse_point[len(traverse_point - 1)])
         if len(traverse_point) >= 1:
             far_point = closestTo(centroids, traverse_point[len(traverse_point) - 1])
+
+            if far_point == (-1, -1):
+                far_point = traverse_point[-1]
         else:
             far_point = cnt_max
+
             
         cv2.circle(frame, far_point, 5, [0, 0, 255], -1)
 
-        if len(traverse_point) < 20:
+        if len(traverse_point) < 15:
             traverse_point.append(far_point)
         else:
             traverse_point.pop(0)
@@ -295,11 +302,15 @@ class App:
         self.drawArea.delete("all")
     def update(self):
         # Get a frame from the video source
-        ret, frame, x, y = self.vid.get_frame()
+        ret, frame, x, y, valid = self.vid.get_frame()
+
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
 
+
+        if valid == False:
+            return
         self.draw(640 - x, y)
 
         self.window.after(self.delay, self.update)
@@ -318,13 +329,20 @@ class MyVideoCapture:
             
             manage_image_opr(frame, hand_hist)
 
+            if len(traverse_point) == 0:
+                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), 0, 0, False)
+
             frame = cv2.flip(frame, 1)
             if ret:
-                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), traverse_point[-1][0], traverse_point[-1][1])
+                try:
+                    return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), traverse_point[-1][0], traverse_point[-1][1], True)
+                except TypeError:
+                    return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), 0, 0, False)
+
             else:
-                return (ret, None, traverse_point[-1][0], traverse_point[-1][1])
+                return (ret, None, traverse_point[-1][0], traverse_point[-1][1], True)
         else:
-            return (ret, None, traverse_point[-1][0], traverse_point[-1][1])
+            return (ret, None, traverse_point[-1][0], traverse_point[-1][1], True)
 
     def __del__(self):
         if self.vid.isOpened():

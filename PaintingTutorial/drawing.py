@@ -53,15 +53,16 @@ class Canvas(QWidget):
         self.image = QImage(self.size(), QImage.Format_RGB32)
         self.image.fill(Qt.white)
 
+        self.image2 = QImage(self.size(), QImage.Format_RGB32)
+        self.image2.fill(Qt.white)
+
         self.lastPoint = QPoint()
         self.lastAverage = QPoint()
         self.points = [None] * N  
     def addNoise(self, point):
-        noiseParam = 6
+        noiseParam = 20
         noisePoint = QPoint(noiseParam * (random.random() - 0.5), noiseParam * (random.random() - 0.5))
-        print(point)
         point += noisePoint
-        print(point)
         return point
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -85,6 +86,10 @@ class Canvas(QWidget):
             painter = QPainter(self.image)
             painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             painter.drawLine(self.lastAverage, totalPoint)
+
+            painter2 = QPainter(self.image2)
+            painter.setPen
+
             self.lastAverage = totalPoint
             # painter.drawLine(self.lastPoint, event.pos())
             self.lastPoint = point

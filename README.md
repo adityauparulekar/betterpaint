@@ -8,4 +8,4 @@ fingerpaint utilizes OpenCV to perform visual image processing on a webcam video
 `pip install -r requirements.txt`
 `python drawing.py`
 
-Calibrate desired Object in designated area with green rectangles and press 'z' to move forward to the Canvas. From there, you can use the Object to control your cursor and draw on the Canvas without any touch screen technology needed.
+Calibrate desired Object in designated area with green rectangles and press 'z' to move forward to the Canvas. From there, you can use any object with the same color to control your cursor and draw on the Canvas without any touch screen technology needed.

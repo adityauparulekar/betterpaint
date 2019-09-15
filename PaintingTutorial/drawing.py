@@ -3,7 +3,8 @@ from PyQt5.QtWidgets import QWidget, QApplication, QGridLayout, QDialog, QPushBu
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QImage, QPixmap
 from PyQt5.QtCore import pyqtSlot, pyqtSignal, Qt, QPoint, QThread
 import cv2
-
+import random
+N = 5
 class Thread(QThread):
     changePixmap = pyqtSignal(QImage)
 
@@ -47,21 +48,44 @@ class Canvas(QWidget):
         self.image.fill(Qt.white)
 
         self.lastPoint = QPoint()
-        
+        self.lastAverage = QPoint()
+        self.points = [None] * N  
+    def addNoise(self, point):
+        noiseParam = 6
+        noisePoint = QPoint(noiseParam * (random.random() - 0.5), noiseParam * (random.random() - 0.5))
+        print(point)
+        point += noisePoint
+        print(point)
+        return point
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self.drawing = True
             self.lastPoint = event.pos()
-    
+            self.lastAverage = self.lastPoint
+            self.points = [None] * N
+            self.rotatePoints(self.lastPoint)
     def mouseMoveEvent(self, event):
         if (event.buttons() & Qt.LeftButton) & self.drawing:
-            print(event.pos())
+            # print(event.pos())
+            point = self.addNoise(event.pos())
+            self.rotatePoints(point)
+            totalPoint = QPoint()
+            count = 0
+            for i in range(N):
+                if self.points[i]:
+                    count+=1
+                    totalPoint += self.points[i]
+            totalPoint /= count
+
             painter = QPainter(self.image)
             painter.setPen(QPen(self.brushColor, self.brushSize, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            painter.drawLine(self.lastPoint, event.pos())
-            self.lastPoint = event.pos()
+            painter.drawLine(self.lastAverage, totalPoint)
+            self.lastAverage = totalPoint
+            # painter.drawLine(self.lastPoint, event.pos())
+            self.lastPoint = point
             self.update()
-    
+    def rotatePoints(self, point):
+        self.points = self.points[1:] + [point]
     def mouseReleaseEvent(self, event):
         if event.button == Qt.LeftButton:
             self.drawing = False

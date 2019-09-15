@@ -1,10 +1,12 @@
 import tkinter
 from tkinter import *
 import cv2
-import PIL.Image, PIL.ImageTk
+import PIL.Image
+import PIL.ImageTk
 import time
 from tkinter.colorchooser import askcolor
 from tkinter.ttk import *
+
 
 class App:
     def __init__(self, window, window_title, video_source=0):
@@ -24,12 +26,14 @@ class App:
         self.canvas.grid(row=0, column=0, rowspan=3)
         # self.canvas.pack(side="left")
 
-        self.drawArea = tkinter.Canvas(window, bg='white', width=640, height=800)
+        self.drawArea = tkinter.Canvas(
+            window, bg='white', width=640, height=800)
         self.drawArea.grid(row=0, column=1, rowspan=6)
 
         self.clearButton = Button(window, text="clear", command=self.clear)
         self.clearButton.grid(row=5, column=0)
-        self.sizeSlider = Scale(window, from_=1, to=10, orient=HORIZONTAL, length=500)
+        self.sizeSlider = Scale(window, from_=1, to=10,
+                                orient=HORIZONTAL, length=500)
         self.sizeSlider.grid(row=4, column=0)
         self.colorButton = Button(window, text="color", command=self.getColor)
         self.colorButton.grid(row=3, column=0)
@@ -37,6 +41,9 @@ class App:
         self.old_y = None
         self.color = 'black'
         self.line_width = 1
+        self.cursor_x = 100
+        self.cursor_y = 100
+        self.cursor = None
         # self.drawArea.grid(row=1, columnspan=5)
         # self.drawArea.pack(side="right")
         self.setup()
@@ -44,8 +51,13 @@ class App:
         self.delay = 50
         self.update()
         self.window.mainloop()
+
     def getColor(self):
         self.color = askcolor()[1]
+        if self.cursor:
+            self.drawArea.delete(self.cursor)
+        radius = 15
+        self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
         print(self.color)
     def reset(self, event):
         self.old_x, self.old_y = None, None
@@ -54,6 +66,12 @@ class App:
         self.drawArea.bind('<ButtonRelease-1>', self.reset)
     def paint(self, event):
         self.line_width = self.sizeSlider.get()
+        if self.cursor:
+            self.drawArea.delete(self.cursor)
+        
+        radius = 15
+        self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
+
         paint_color = self.color
         if self.old_x and self.old_y:
             self.drawArea.create_line(self.old_x, self.old_y, event.x, event.y,
@@ -61,6 +79,9 @@ class App:
                                capstyle=ROUND, smooth=TRUE, splinesteps=36)
         self.old_x = event.x
         self.old_y = event.y
+        self.cursor_x = event.x
+        self.cursor_y = event.y
+
     def clear(self):
         self.drawArea.delete("all")
     def update(self):

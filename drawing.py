@@ -232,8 +232,8 @@ class App:
     def setup(self):
         self.drawArea.bind('<B1-Motion>', self.paint)
         self.drawArea.bind('<ButtonRelease-1>', self.reset)
-        # self.drawArea.bind('<space>', self.push)
-        # self.drawArea.bind('<KeyRelease-space>', self.release)
+        self.window.bind('<KeyPress-space>', self.push)
+        self.window.bind('<KeyRelease-space>', self.release)
         # self.drawArea.bind('<B1-Motion>', self.push)
         # self.drawArea.bind('<ButtonRelease-1>', self.release)
     def paint(self, event):
@@ -273,12 +273,10 @@ class App:
         self.cursor_x = x
         self.cursor_y = y
 
-    def push(self):
-        print("Setting draw enable")
+    def push(self, event):
         self.drawEnable = True
 
-    def release(self):
-        print("Disabling draw enable")
+    def release(self, event):
         self.drawEnable = False
         
 
@@ -286,15 +284,10 @@ class App:
         self.drawArea.delete("all")
     def update(self):
         # Get a frame from the video source
-        ret, frame, x, y, press = self.vid.get_frame()
+        ret, frame, x, y = self.vid.get_frame()
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
-        
-        if press:
-            self.push()
-        else:
-            self.release()
 
         self.draw(640 - x, y)
 
@@ -308,24 +301,19 @@ class MyVideoCapture:
 
     def get_frame(self):
         if self.vid.isOpened():
-            pressed_key = (cv2.waitKey(1) == ord('n'))
+            
             ret, frame = self.vid.read()
             frame = cv2.resize(frame, None, fx=1.0, fy=1.0)
-
-            press = (pressed_key) #& 0xFF == ord('n'))
-
-            print(0xFF)
-            print(ord('n'))
             
             manage_image_opr(frame, hand_hist)
 
             frame = cv2.flip(frame, 1)
             if ret:
-                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), traverse_point[-1][0], traverse_point[-1][1], press)
+                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), traverse_point[-1][0], traverse_point[-1][1])
             else:
-                return (ret, None, traverse_point[-1][0], traverse_point[-1][1], press)
+                return (ret, None, traverse_point[-1][0], traverse_point[-1][1])
         else:
-            return (ret, None, traverse_point[-1][0], traverse_point[-1][1], press)
+            return (ret, None, traverse_point[-1][0], traverse_point[-1][1])
 
     def __del__(self):
         if self.vid.isOpened():

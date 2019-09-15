@@ -140,7 +140,6 @@ def draw_circles(frame, traverse_point):
         for i in range(len(traverse_point)):
             cv2.circle(frame, traverse_point[i], int(5 - (5 * i * 3) / 100), [0, 255, 255], -1)
 
-
 def manage_image_opr(frame, hand_hist):
     hist_mask_image = hist_masking(frame, hand_hist)
     contour_list = contours(hist_mask_image)
@@ -212,6 +211,7 @@ class App:
         self.cursor_x = 100
         self.cursor_y = 100
         self.cursor = None
+        self.drawEnable = False
         # self.drawArea.grid(row=1, columnspan=5)
         # self.drawArea.pack(side="right")
         self.setup()
@@ -232,6 +232,10 @@ class App:
     def setup(self):
         self.drawArea.bind('<B1-Motion>', self.paint)
         self.drawArea.bind('<ButtonRelease-1>', self.reset)
+        # self.drawArea.bind('<space>', self.push)
+        # self.drawArea.bind('<KeyRelease-space>', self.release)
+        # self.drawArea.bind('<B1-Motion>', self.push)
+        # self.drawArea.bind('<ButtonRelease-1>', self.release)
     def paint(self, event):
         self.line_width = self.sizeSlider.get()
         if self.cursor:
@@ -250,14 +254,49 @@ class App:
         self.cursor_x = event.x
         self.cursor_y = event.y
 
+    # method for drawing a point
+    def draw(self, x, y):
+        self.line_width = self.sizeSlider.get()
+        if self.cursor:
+            self.drawArea.delete(self.cursor)
+        
+        radius = 15
+        self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
+
+        if self.old_x and self.old_y:
+            if self.drawEnable:
+                self.drawArea.create_line(self.old_x, self.old_y, x, y,
+                                width=self.line_width, fill=self.color,
+                                capstyle=ROUND, smooth=TRUE, splinesteps=36)
+        self.old_x = x
+        self.old_y = y
+        self.cursor_x = x
+        self.cursor_y = y
+
+    def push(self):
+        print("Setting draw enable")
+        self.drawEnable = True
+
+    def release(self):
+        print("Disabling draw enable")
+        self.drawEnable = False
+        
+
     def clear(self):
         self.drawArea.delete("all")
     def update(self):
         # Get a frame from the video source
-        ret, frame = self.vid.get_frame()
+        ret, frame, x, y, press = self.vid.get_frame()
         if ret:
             self.photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(frame))
             self.canvas.create_image(0, 0, image = self.photo, anchor = tkinter.NW)
+        
+        if press:
+            self.push()
+        else:
+            self.release()
+
+        self.draw(640 - x, y)
 
         self.window.after(self.delay, self.update)
 
@@ -269,18 +308,24 @@ class MyVideoCapture:
 
     def get_frame(self):
         if self.vid.isOpened():
+            pressed_key = (cv2.waitKey(1) == ord('n'))
             ret, frame = self.vid.read()
             frame = cv2.resize(frame, None, fx=1.0, fy=1.0)
+
+            press = (pressed_key) #& 0xFF == ord('n'))
+
+            print(0xFF)
+            print(ord('n'))
             
             manage_image_opr(frame, hand_hist)
 
             frame = cv2.flip(frame, 1)
             if ret:
-                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+                return (ret, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), traverse_point[-1][0], traverse_point[-1][1], press)
             else:
-                return (ret, None)
+                return (ret, None, traverse_point[-1][0], traverse_point[-1][1], press)
         else:
-            return (ret, None)
+            return (ret, None, traverse_point[-1][0], traverse_point[-1][1], press)
 
     def __del__(self):
         if self.vid.isOpened():

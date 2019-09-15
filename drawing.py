@@ -227,7 +227,6 @@ class App:
             self.drawArea.delete(self.cursor)
         radius = 15
         self.cursor = self.drawArea.create_oval(self.cursor_x - radius / 2, self.cursor_y - radius / 2, self.cursor_x + radius / 2, self.cursor_y + radius / 2, outline=self.color)
-        print(self.color)
     def reset(self, event):
         self.old_x, self.old_y = None, None
     def setup(self):
@@ -268,7 +267,6 @@ class App:
                 netPoint[1] += self.points[i][1]
                 numValid+=1
         netPoint = [netPoint[0] / numValid, netPoint[1] * 2 / numValid]
-        print(netPoint)
         self.line_width = self.sizeSlider.get()
         if self.cursor:
             self.drawArea.delete(self.cursor)

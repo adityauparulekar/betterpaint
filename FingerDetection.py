@@ -1,5 +1,6 @@
-import cv2
+import cv2, math
 import numpy as np
+import json
 
 hand_hist = None
 traverse_point = []
@@ -11,7 +12,7 @@ hand_rect_two_x = None
 hand_rect_two_y = None
 
 
-def rescale_frame(frame, wpercent=130, hpercent=130):
+def rescale_frame(frame, wpercent=80, hpercent=80):
     width = int(frame.shape[1] * wpercent / 100)
     height = int(frame.shape[0] * hpercent / 100)
     return cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
@@ -63,36 +64,41 @@ def draw_rect(frame):
     return frame
 
 
-def hand_histogram(frame):
+def hand_histogram(frame, roiAlt, use):
     global hand_rect_one_x, hand_rect_one_y
 
-    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    roi = np.zeros([90, 10, 3], dtype=hsv_frame.dtype)
+    if use == True:
+        hand_hist = cv2.calcHist([roiAlt], [0, 1], None, [180, 256], [0, 180, 0, 256])
+    else:
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        roi = np.zeros([90, 10, 3], dtype=hsv_frame.dtype)
 
-    for i in range(total_rectangle):
-        roi[i * 10: i * 10 + 10, 0: 10] = hsv_frame[hand_rect_one_x[i]:hand_rect_one_x[i] + 10,
-                                          hand_rect_one_y[i]:hand_rect_one_y[i] + 10]
+        for i in range(total_rectangle):
+            roi[i * 10: i * 10 + 10, 0: 10] = hsv_frame[hand_rect_one_x[i]:hand_rect_one_x[i] + 10, hand_rect_one_y[i]:hand_rect_one_y[i] + 10]
 
-    hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
+        hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
+
+        file = open("thresh/canary.his", 'w')
+        print(type(roi))
+        file.close()
+        
     return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
 
 def hist_masking(frame, hist):
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    dst = cv2.calcBackProject([hsv], [0, 1], hist, [0, 180, 0, 256], 1)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        dst = cv2.calcBackProject([hsv], [0, 1], hist, [0, 180, 0, 256], 1)
 
-    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
-    cv2.filter2D(dst, -1, disc, dst)
+        disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
+        cv2.filter2D(dst, -1, disc, dst)
 
-    ret, thresh = cv2.threshold(dst, 150, 255, cv2.THRESH_BINARY)
+        ret, thresh = cv2.threshold(dst, 150, 255, cv2.THRESH_BINARY)
+        # thresh = cv2.dilate(thresh, None, iterations=5)
 
-    # thresh = cv2.dilate(thresh, None, iterations=5)
+        thresh = cv2.merge((thresh, thresh, thresh))
 
-    thresh = cv2.merge((thresh, thresh, thresh))
-
-    cv2.imshow("image", cv2.bitwise_and(frame, thresh))
-
-    return cv2.bitwise_and(frame, thresh)
+        cv2.imshow("image", cv2.bitwise_and(frame, thresh))
+        return cv2.bitwise_and(frame, thresh)
 
 
 def centroid(max_contour):
@@ -104,28 +110,26 @@ def centroid(max_contour):
     else:
         return None
 
-
-def farthest_point(defects, contour, centroid):
-    if defects is not None and centroid is not None:
-        s = defects[:, 0][:, 0]
-        cx, cy = centroid
-
-        x = np.array(contour[s][:, 0][:, 0], dtype=np.float)
-        y = np.array(contour[s][:, 0][:, 1], dtype=np.float)
-
-        xp = cv2.pow(cv2.subtract(x, cx), 2)
-        yp = cv2.pow(cv2.subtract(y, cy), 2)
-        dist = cv2.sqrt(cv2.add(xp, yp))
-
-        dist_max_i = np.argmax(dist)
-
-        if dist_max_i < len(s):
-            farthest_defect = s[dist_max_i]
-            farthest_point = tuple(contour[farthest_defect][0])
-            return farthest_point
-        else:
-            return None
-
+def closestTo(centroidList, lastPoint):
+    min_index = 0
+    minVal = 1000000000
+    lastx = 0
+    lasty = 0
+    if lastPoint is not None:
+        lastx = lastPoint[0]
+        lasty = lastPoint[1]
+    for i in range(len(centroidList)):
+        if centroidList[i] is not None:
+            x = centroidList[i][0]
+            y = centroidList[i][1]
+            xp = pow(x-lastx, 2)
+            yp = pow(y-lasty, 2)
+            sum = xp + yp
+            dist = math.sqrt(sum)
+            if dist < minVal:
+                min_index = i
+                minVal = dist
+    return centroidList[min_index]
 
 def draw_circles(frame, traverse_point):
     if traverse_point is not None:
@@ -136,17 +140,29 @@ def draw_circles(frame, traverse_point):
 def manage_image_opr(frame, hand_hist):
     hist_mask_image = hist_masking(frame, hand_hist)
     contour_list = contours(hist_mask_image)
-    max_cont = max_contour(contour_list)
 
-    cnt_centroid = centroid(max_cont)
-    cv2.circle(frame, cnt_centroid, 5, [255, 0, 255], -1)
+    max_cont = max_contour(contour_list)
+    cnt_max = centroid(max_cont)
+
+    centroids = []
+    for i in range(0,len(contour_list)):
+        centroids.append(centroid(contour_list[i]))
+    
+    cv2.circle(frame, cnt_max, 5, [255, 0, 255], -1)
 
     if max_cont is not None:
         hull = cv2.convexHull(max_cont, returnPoints=False)
         defects = cv2.convexityDefects(max_cont, hull)
-        far_point = cnt_centroid
-        print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point))
+        far_point = (0,0)
+        #if len(traverse_point) >= 2:
+        #    far_point = minCost(contour_list[i], traverse_point[len(traverse_point - 2)], traverse_point[len(traverse_point - 1)])
+        if len(traverse_point) >= 1:
+            far_point = closestTo(centroids, traverse_point[len(traverse_point) - 1])
+        else:
+            far_point = cnt_max
+            
         cv2.circle(frame, far_point, 5, [0, 0, 255], -1)
+
         if len(traverse_point) < 20:
             traverse_point.append(far_point)
         else:
@@ -167,7 +183,17 @@ def main():
 
         if pressed_key & 0xFF == ord('z'):
             is_hand_hist_created = True
-            hand_hist = hand_histogram(frame)
+
+            try:
+                file = open("lol/thresh/canary.his", 'r')
+                
+                hist = json.loads(file.read())
+
+                hand_hist = hand_histogram(frame, hist, True)
+
+                file.close()
+            except FileNotFoundError:
+                hand_hist = hand_histogram(frame, "lmao", False)
 
         if is_hand_hist_created:
             manage_image_opr(frame, hand_hist)
